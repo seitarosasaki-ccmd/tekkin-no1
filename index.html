@@ -113,8 +113,19 @@ canvas{display:block;width:100%}
 .seg button:disabled{opacity:.5}
 details.adv{font-size:13px;color:var(--sub)}
 details.adv summary{cursor:pointer;font-weight:700;margin-bottom:8px}
+.plan{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:10px 10px 12px;margin:0 2px 10px}
+.plan h3{margin:0 2px 8px;font-size:14px;font-weight:900}
+.plan h3 small{font-weight:700;color:var(--sub);font-size:11px;margin-left:4px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{font:inherit;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:5px 1px;text-align:center;cursor:pointer;min-width:0}
+.day.today{border-color:#F2B400;background:rgba(242,180,0,.16)}
+.day.goal{cursor:default;border-style:dashed}
+.day .d{display:block;font-size:10px;color:var(--sub);white-space:nowrap}
+.day .s{display:block;font-size:24px;line-height:1.25;min-height:30px}
+.day .l{display:block;font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden}
+#steps button{padding:7px 10px}
 @media (orientation:landscape) and (max-height:520px){
-  header,.tip{display:none} .wrap{padding-top:6px} .glock{height:140px} .glock::after{top:96px}
+  header,.tip,.plan{display:none} .wrap{padding-top:6px} .glock{height:140px} .glock::after{top:96px}
   #ov .big{font-size:44px} #ov .small{font-size:15px} .sndbtn{padding:8px;font-size:15px}
 }
 @media (prefers-reduced-motion:reduce){.bar{transition:none}.bar.soon{animation:none}}
@@ -130,6 +141,7 @@ details.adv summary{cursor:pointer;font-weight:700;margin-bottom:8px}
   <p class="tip" id="tip" hidden>📱 よこむきに すると てっきんが おおきくなるよ</p>
 
   <button id="snd" class="sndbtn">🔇 ここをタップして おとを だす</button>
+  <div class="plan" id="plan"></div>
   <div class="chips" id="chips" role="group" aria-label="れんしゅうする ところ"></div>
 
   <div class="next" aria-live="off"><span class="lbl">つぎ</span><div class="seq" id="nextSeq"></div></div>
@@ -145,6 +157,13 @@ details.adv summary{cursor:pointer;font-weight:700;margin-bottom:8px}
       <div class="seg" role="group" aria-label="モード">
         <button data-mode="demo" aria-pressed="true">おてほん</button>
         <button data-mode="tap" aria-pressed="false">チャレンジ</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="seg" role="group" aria-label="ステップ" id="steps">
+        <button data-step="1" aria-pressed="true">①たすけ</button>
+        <button data-step="2" aria-pressed="false">②ひかりなし</button>
+        <button data-step="3" aria-pressed="false">③ほんばん</button>
       </div>
     </div>
     <div class="row">
@@ -167,7 +186,8 @@ details.adv summary{cursor:pointer;font-weight:700;margin-bottom:8px}
     やすみの ところは 画面に のこりの はくが でるので、いっしょに かぞえよう。<br>
     バックのおと：まわりの がっきの かわりに、うちゅう だいせんそう ふうの オリジナルの ばんそうが ながれるよ（ほんものの きょくとは ちがうよ）。<br>
     かぞえるこえ：やすみの あいだ「いち に さん し、に に さん し…」と こえで かぞえるよ。🚀が ⭐に ついたら でばん！<br>
-    やさしく：タイミングの はんていが ゆるくなって、まちがえても しからないよ。</p>
+    やさしく：タイミングの はんていが ゆるくなって、まちがえても しからないよ。<br>
+    ステップ：①は ぜんぶ おしえてくれる。②は ひかりと おてほんの おとが なくなる。③ほんばんは おちてくる おとも かぞえるこえも なくなって、ばんそうと カチカチだけ。オーディションと おなじ じょうたいで れんしゅう できるよ。</p>
     <details class="adv"><summary>おとなよう：はやさを こまかく</summary>
       <div class="row"><label class="tempo">はやさ <input type="range" id="bpm" min="40" max="120" step="2" value="56"><output id="bpmOut">♩=56</output></label></div>
     </details>
@@ -245,7 +265,7 @@ function colX(m){ // 中心xとはば（単位：白バー幅）
 const nmHTML=(acc,letter,oct)=>`<span class="nm ${oct}">${acc}${LET[letter]}</span>`;
 
 // ===== 状態 =====
-const st={sec:'all',mode:'demo',bpm:56,melody:true,metro:true,back:true,bb:0,voice:true,kids:true,vb:0,loop:false,playing:false,
+const st={sec:'all',mode:'demo',bpm:56,melody:true,metro:true,back:true,bb:0,voice:true,kids:true,vb:0,step:1,glow:true,showNotes:true,loop:false,playing:false,
   t0:0,sb:0,eb:0,spb:60/72,ni:0,ci:0,fb:[],res:{p:0,g:0,m:0,w:0}};
 let WIN_P=.12, WIN_G=.35;
 function setWin(){WIN_P=st.kids?.12:.09;WIN_G=st.kids?.35:.22;}
@@ -488,7 +508,7 @@ function draw(nb){
   // 音
   const inSec=n=>n.beat>=st.sb-1e-6&&n.beat<st.eb-1e-6;
   for(const n of NOTES){
-    if(n.beat>top)break;
+    if(!st.showNotes||n.beat>top)break;
     if(n.beat+n.dur<nb-.8)continue;
     const p=colX(n.midi), x=(p.c-p.w/2)*uw, w=p.w*uw;
     const y=hitY-(n.beat-nb)*ppb, yt=hitY-(n.beat+n.dur-nb)*ppb;
@@ -511,6 +531,7 @@ function draw(nb){
   }
   // たたく線
   cx.strokeStyle=th.hit;cx.globalAlpha=.55;cx.lineWidth=3;cx.beginPath();cx.moveTo(0,hitY);cx.lineTo(W,hitY);cx.stroke();cx.globalAlpha=1;
+  if(!st.showNotes){cx.fillStyle=th.sub;cx.globalAlpha=.45;cx.font='900 28px "Zen Maru Gothic",sans-serif';cx.textAlign='center';cx.fillText('🎤 ほんばん',W/2,H/2);cx.textAlign='left';cx.globalAlpha=1;}
   // ひょうか
   const now=performance.now();
   st.fb=st.fb.filter(f=>now-f.t<700);
@@ -531,17 +552,17 @@ function hud(nb){
   let idx=NOTES.findIndex(n=>n.beat>=Math.max(nb-.02,sb-1e-6));
   const list=[];
   if(idx>=0)for(let i=idx;i<NOTES.length&&list.length<5;i++){if(NOTES[i].beat>=eb-1e-6)break;list.push(NOTES[i]);}
-  const key=idx+':'+list.length;
+  const key=idx+':'+list.length+':'+st.showNotes;
   if(key!==lastNextKey){
     lastNextKey=key;
-    nextSeq.innerHTML=list.map(n=>`<span class="n" style="color:${COL[n.letter]}">${nmHTML(n.acc,n.letter,n.oct)}</span>`).join('')||'<span class="n">—</span>';
+    nextSeq.innerHTML=!st.showNotes?'<span class="n">🎤 ほんばん</span>':list.map(n=>`<span class="n" style="color:${COL[n.letter]}">${nmHTML(n.acc,n.letter,n.oct)}</span>`).join('')||'<span class="n">—</span>';
   }
   if(!st.playing){ov.classList.add('hide');return;}
   if(nb<st.sb){ovBig.textContent=Math.min(4,Math.floor(nb-(st.sb-4))+1);ovSmall.textContent='よーい';rk.hidden=true;ov.classList.remove('hide');return;}
   const nx=list[0];
   let sounding=false;
   for(const n of NOTES){if(n.beat>nb)break;if(n.beat+n.dur>nb+1e-6){sounding=true;break;}}
-  if(nx&&!sounding&&nx.beat-nb>=2){
+  if(st.showNotes&&nx&&!sounding&&nx.beat-nb>=2){
     let pe=st.sb;for(const n of NOTES){if(n.beat>nb)break;pe=Math.max(pe,n.beat+n.dur);}
     const p=Math.max(0,Math.min(1,(nb-pe)/Math.max(.01,nx.beat-pe)));
     ovBig.textContent=Math.ceil(nx.beat-nb-1e-3);ovSmall.textContent='はく まってね';
@@ -617,6 +638,8 @@ function finish(){
     document.getElementById('rBest').textContent='つぎは チャレンジ してみよう';
     document.querySelector('.tally').style.display='none';
   }
+  const got=award(),rb=document.getElementById('rBest');
+  if(got)rb.textContent=(PLAN.every((p,i)=>STAMP[i])?'🎉 ぜんぶの スタンプ あつまった！ ':'💮 スタンプ ゲット！ ')+rb.textContent;
   document.getElementById('modal').classList.remove('hide');
 }
 setInterval(()=>{
@@ -637,13 +660,13 @@ function frame(){
     for(const n of NOTES){
       if(n.beat<st.sb-1e-6||n.beat>=st.eb-1e-6)continue;
       const tt=bt(n.beat);
-      if(st.mode==='demo'){if(!n.f&&now>=tt){n.f=true;lit(n.midi);}}
+      if(st.mode==='demo'){if(!n.f&&now>=tt){n.f=true;if(st.glow)lit(n.midi);}}
       else if(!n.j&&now>tt+WIN_G){n.j='m';st.res.m++;if(!st.kids)addFb('ミス',n.midi,'m');}
     }
     let t1=null;const soon=new Set();
     for(const n of NOTES){if(n.beat<st.sb-1e-6||n.beat>=st.eb-1e-6||n.beat<nb-1e-3||n.j)continue;
       if(t1===null){if(n.beat-nb>1)break;t1=n.beat;}if(Math.abs(n.beat-t1)<1e-6)soon.add(n.midi);else break;}
-    for(const k in bars)bars[k].classList.toggle('soon',soon.has(+k));
+    for(const k in bars)bars[k].classList.toggle('soon',st.glow&&soon.has(+k));
     if(nb>=st.eb+.4){ if(st.loop&&st.mode==='demo')start(); else finish(); }
   } else {nb=SECS[st.sec].start-3.2;for(const k in bars)bars[k].classList.remove('soon');}
   draw(nb);hud(nb);
@@ -668,6 +691,7 @@ function ui(){
   playBtn.textContent=st.playing?'とめる':'スタート';
   document.getElementById('bpm').disabled=st.playing;
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===st.mode)));
+  document.querySelectorAll('[data-step]').forEach(b=>{b.disabled=st.playing;b.setAttribute('aria-pressed',String(+b.dataset.step===st.step));});
   document.querySelectorAll('[data-bpm]').forEach(b=>{b.disabled=st.playing;b.setAttribute('aria-pressed',String(+b.dataset.bpm===st.bpm));});
 }
 playBtn.onclick=()=>{st.playing?stop():start();};
@@ -687,6 +711,45 @@ document.getElementById('again').onclick=()=>{document.getElementById('modal').c
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')e.target.classList.add('hide');});
 
 document.getElementById('snd').onclick=()=>{ensureCtx();unlockSpeech();setTimeout(()=>{if(sndOK())ding(72,ac.currentTime+.05,1);sndUI();},120);};
+// ===== ステップ =====
+function setStep(n){
+  st.step=n;st.glow=n<2;st.showNotes=n<3;st.melody=n<2;st.voice=n<3;
+  document.getElementById('melody').checked=st.melody;document.getElementById('voice').checked=st.voice;
+  lastNextKey='';ui();
+}
+document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{if(st.playing)return;setStep(+b.dataset.step);});
+// ===== れんしゅう カード =====
+const PLAN=[
+ {m:10,d:30,w:'きん',sec:'A',step:1,l:'A'},
+ {m:10,d:31,w:'ど',sec:'B',step:1,l:'B'},
+ {m:11,d:1,w:'にち',sec:'C',step:1,l:'C'},
+ {m:11,d:2,w:'げつ',sec:'R',step:1,l:'D・E'},
+ {m:11,d:3,w:'か',sec:'all',step:2,l:'ぜんぶ②'},
+ {m:11,d:4,w:'すい',sec:'all',step:3,l:'ぜんぶ③'}];
+let STAMP={};try{STAMP=JSON.parse(localStorage.getItem('tekkin1-stamps')||'{}')||{};}catch(e){}
+function award(){
+  let got=false;
+  PLAN.forEach((p,i)=>{if(!STAMP[i]&&p.sec===st.sec&&st.step>=p.step){STAMP[i]=1;got=true;}});
+  if(got){try{localStorage.setItem('tekkin1-stamps',JSON.stringify(STAMP));}catch(e){}buildPlan();}
+  return got;
+}
+function buildPlan(){
+  const el=document.getElementById('plan'),t=new Date(),tm=t.getMonth()+1,tdd=t.getDate();
+  const n=PLAN.filter((p,i)=>STAMP[i]).length;
+  el.innerHTML='<h3>🗓 れんしゅう カード <small>'+n+'/6 ・ タップで れんしゅう</small></h3><div class="days"></div>';
+  const ds=el.querySelector('.days');
+  PLAN.forEach((p,i)=>{
+    const b=document.createElement('button');b.className='day'+(p.m===tm&&p.d===tdd?' today':'');
+    b.innerHTML='<span class="d">'+p.m+'/'+p.d+'</span><span class="s">'+(STAMP[i]?'💮':'')+'</span><span class="l">'+p.l+'</span>';
+    b.setAttribute('aria-label',p.m+'がつ'+p.d+'にち '+p.l+(STAMP[i]?' できた':''));
+    b.onclick=()=>{if(st.playing)stop();st.sec=p.sec;setStep(p.step);buildChips();};
+    ds.appendChild(b);
+  });
+  const g=document.createElement('div');g.className='day goal'+(tm===11&&tdd===5?' today':'');
+  g.innerHTML='<span class="d">11/5</span><span class="s">🎤</span><span class="l">ほんばん</span>';
+  ds.appendChild(g);
+}
+buildPlan();
 buildChips();layout();ui();requestAnimationFrame(frame);
 })();
 </script>
