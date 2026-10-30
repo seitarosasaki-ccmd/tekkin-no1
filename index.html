@@ -184,7 +184,7 @@ details.adv summary{cursor:pointer;font-weight:700;margin-bottom:8px}
     <p class="note">おてほん：音とひかりで おしえてくれるよ。ほんものの てっきんで いっしょに たたこう。<br>
     チャレンジ：画面の てっきんを タイミングよく タップ。おわったら てんすうが でるよ。<br>
     やすみの ところは 画面に のこりの はくが でるので、いっしょに かぞえよう。<br>
-    バックのおと：まわりの がっきの かわりに、うちゅう だいせんそう ふうの オリジナルの ばんそうが ながれるよ（ほんものの きょくとは ちがうよ）。<br>
+    バックのおと：まわりの がっきの かわりに、うちゅう えいが ふうの オリジナルの ばんそうが ながれるよ（ほんものの きょくとは ちがうよ）。<br>
     かぞえるこえ：やすみの あいだ「いち に さん し、に に さん し…」と こえで かぞえるよ。🚀が ⭐に ついたら でばん！<br>
     やさしく：タイミングの はんていが ゆるくなって、まちがえても しからないよ。<br>
     ステップ：①は ぜんぶ おしえてくれる。②は ひかりと おてほんの おとが なくなる。③ほんばんは おちてくる おとも かぞえるこえも なくなって、ばんそうと カチカチだけ。オーディションと おなじ じょうたいで れんしゅう できるよ。</p>
@@ -320,7 +320,7 @@ function click(when,acc){
 }
 const bt=b=>st.t0+(b-st.sb)*st.spb;
 
-// ===== バックのおと：宇宙大戦ふう オリジナル伴奏（てっきんパートから和音を逆算） =====
+// ===== バックのおと：宇宙えいがふう オリジナル伴奏（てっきんパートから和音を逆算。じっさいの映画の曲は つかっていない） =====
 const CHORDS=(
  'C C F G D/C C C F G C Em F G G F Dm Bb G C G C|G C C '+
  'Am F Am E7 F G7 '+
@@ -332,7 +332,7 @@ const CHORDS=(
 const HIT=new Set([32,40,44,48,52,56,60,64]);
 // ホルンの オリジナル メロディ（A と C）
 const MEL={
- 0:'0,1,C4 1,.5,D4 1.5,.5,E4 2,2,G4',1:'0,1.5,E4 1.5,.5,D4 2,2,C4',2:'0,1,A4 1,1,C5 2,1.5,A4 3.5,.5,G4',3:'0,3,G4 3,1,D4',
+ 0:'3,.333,C4 3.333,.333,E4 3.667,.333,G4',1:'0,2,C5 2,.333,B4 2.333,.333,A4 2.667,.333,B4 3,1,G4',2:'0,1.5,A4 1.5,.5,C5 2,2,F5',3:'0,2,D5 2,.333,B4 2.333,.333,C5 2.667,.333,D5',
  4:'0,2,A4 2,2,D5',5:'0,4,C5',6:'0,1,G4 1,1,C5 2,2,D5',7:'0,2,C5 2,1,A4 3,1,F4',8:'0,3,G4 3,1,B4',
  9:'0,2,C5 2,2,E5',10:'0,3,B4 3,1,G4',11:'0,2,F4 2,1,A4 3,1,C5',12:'0,2,D5 2,2,B4',13:'0,4,G4',
  14:'0,1,F4 1,1,A4 2,1,C5 3,1,F5',15:'0,3,D5 3,1,A4',16:'0,2,Bb4 2,2,D5',17:'0,2,B4 2,1,D5 3,1,G4',
@@ -340,6 +340,7 @@ const MEL={
  29:'0,1,G4 1,1,C5 2,1.5,D5 3.5,.5,E5',30:'0,2,C5 2,1,A4 3,1,C5',31:'0,2,E5 2,2,D5',
  33:'0,2,E4 2,2,G4',34:'0,2,A4 2,2,F4',35:'0,4,G4',36:'0,2,G4 2,2,B3'
 };
+const TRP=new Set([0,1,2,3,29,30,31]);
 const PCX={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
 function chd(s){
   const [c,bs]=s.split('/');const m=/^([A-G])(b|#)?(m7|m|7)?$/.exec(c);
@@ -380,6 +381,19 @@ function choir(m,t,dur,gv){ // 「アー」という合唱ふう
     [-7,7].forEach(dt=>{const os=ac.createOscillator();os.type='sawtooth';os.frequency.value=freq(m);os.detune.value=dt;os.connect(bp);os.start(t);os.stop(t+dur+1);});});
   out(g,.9);
 }
+function harp(c,t,span){ // ハープの かけあがり
+  const ns=[];for(let n=55;n<=88;n++)if(c.iv.some(i=>(n-c.r-i)%12===0))ns.push(n);
+  ns.forEach((n,i)=>{const tt=t+span*i/ns.length,o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=freq(n);
+    g.gain.setValueAtTime(.0001,tt);g.gain.exponentialRampToValueAtTime(.05,tt+.005);g.gain.exponentialRampToValueAtTime(.0001,tt+.9);
+    o.connect(g);out(g,.8);o.start(tt);o.stop(tt+1);});
+}
+function trem(m,t,dur,gv){ // 弦の トレモロ
+  const o=ac.createOscillator(),g=ac.createGain(),lp=ac.createBiquadFilter(),l=ac.createOscillator(),lg=ac.createGain(),am=ac.createGain();
+  o.type='sawtooth';o.frequency.value=freq(m);lp.type='lowpass';lp.frequency.value=2200;
+  am.gain.value=.5;l.frequency.value=13;lg.gain.value=.5;l.connect(lg).connect(am.gain);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gv,t+dur*.9);g.gain.setTargetAtTime(0,t+dur,.08);
+  o.connect(lp).connect(am).connect(g);out(g,.5);o.start(t);l.start(t);o.stop(t+dur+.4);l.stop(t+dur+.4);
+}
 function drum(t,k,v){
   if(k==='kick'||k==='timp'||k==='boom'){
     const o=ac.createOscillator(),g=ac.createGain(),f0=k==='kick'?50:k==='boom'?38:v.f;
@@ -407,6 +421,10 @@ function bar(bi){
     tone(inR(c.r,36),B(x),d*spb,{type:'sawtooth',g:g*1.4,a:.03,r:.3,cut:900,env:1,w:.3});};
   const timp=(c,x,g)=>drum(B(x),'timp',{f:freq(inR(c.r,41)),g:g});
   if([0,23,29,37,45,53].includes(bi)){drum(B(0),'crash',{g:.16});drum(B(0),'boom',{g:.5});}
+  if(bi===0){brass(parts[0],0,1.6,.04);brass(parts[0],0,1.6,.025,72);for(let i=0;i<12;i++)drum(B(2+i/6),'timp',{f:freq(43),g:.04+.12*i/11,d:.3});}
+  if([22,28,36,44,52].includes(bi))harp(chd((CHORDS[bi+1]||'C').split('|')[0]),B(3),.9*spb);
+  if(sty==='b')vo(parts[0],60,74).forEach(n=>trem(n,B(0),4*spb,.012*lvl));
+  if(sty==='c'&&bi>=33&&bi<=35)vo(cAt(0),48,60).forEach(n=>trem(n,B(0),4*spb,.012));
   if([22,28,36,44,52].includes(bi))drum(B(2),'swell',{g:.12,d:2*spb});
   // 合唱とストリングスの和音
   parts.forEach((c,k)=>{const s=half?k*2:0,d=half?2:4;
@@ -414,8 +432,9 @@ function bar(bi){
     tone(inR(c.b,36),B(s),d*spb,{type:'sawtooth',g:.03*lvl,a:.2,r:.4,cut:500,det:6,w:.3});});
   // ホルンのメロディ
   if(MEL[bi])MEL[bi].split(' ').forEach(e=>{const [x,d,n]=e.split(',');const m=parse(n).midi;
-    const gm=sty==='c'?.05:.038;
-    tone(m,B(+x),+d*spb*.95,{type:'sawtooth',g:gm,a:.06,r:.25,cut:1700,env:1,det:5,vib:12,w:.55});
+    const tr=TRP.has(bi),gm=tr?.045:sty==='c'?.05:.038;
+    tone(m,B(+x),+d*spb*.95,{type:'sawtooth',g:gm,a:tr?.02:.06,r:.25,cut:tr?3400:1700,env:1,det:5,vib:tr?8:12,w:.55});
+    if(tr)tone(m-7,B(+x),+d*spb*.95,{type:'sawtooth',g:gm*.5,a:.03,r:.25,cut:2000,env:1,det:4,w:.45});
     tone(m-12,B(+x),+d*spb*.95,{type:'sawtooth',g:gm*.6,a:.06,r:.25,cut:1100,env:1,w:.4});
     if(sty==='c')tone(m+12,B(+x),+d*spb*.95,{type:'square',g:.012,a:.04,r:.2,cut:3000,w:.5});});
   if(sty==='m'||sty==='c'){
@@ -427,6 +446,7 @@ function bar(bi){
     drum(B(1),'snare',{g:.09});drum(B(3),'snare',{g:.09});
     if(sty==='c'||bi%2)[3+1/3,3+2/3].forEach(x=>drum(B(x),'snare',{g:.05}));
     if(!hit&&!MEL[bi]){brass(cAt(0),0,1.2,.026);brass(cAt(2),2,.5,.02);}
+    if(!hit&&!(MEL[bi]&&/(^| )3[,.]/.test(MEL[bi]))&&bi%2===1){const c=cAt(3);[3,3+1/3,3+2/3].forEach((x,i)=>brass(c,x,.28,.016+.006*i));}
     if(sty==='c'&&!hit&&MEL[bi])brass(cAt(0),0,.5,.02,48);
   }else if(sty==='b'){
     const c=parts[0];
@@ -441,7 +461,8 @@ function bar(bi){
     [0,2].forEach(x=>timp(cAt(x),x,x?.24:.34));
     if(bi%2===0)drum(B(0),'boom',{g:.38});
     [1,3].forEach(x=>{drum(B(x),'snare',{g:.09});drum(B(x+2/3),'snare',{g:.045});});
-    if(!hit){brass(cAt(0),0,1.5,.03);brass(cAt(2),2+2/3,.3,.02);
+    if(!hit&&bi%2===0)[0,1/3,2/3].forEach((x,i)=>brass(cAt(0),x,.26,.022+.006*i,46));
+    if(!hit){brass(cAt(0),1,1,.028);brass(cAt(2),2+2/3,.3,.02);
       vo(cAt(0),60,74).slice(-1).forEach(n=>tone(n+12,B(0),3.6*spb,{type:'sawtooth',g:.012,a:.3,r:.4,cut:2200,det:8,vib:10,w:.6}));}
   }
   if(hit){
