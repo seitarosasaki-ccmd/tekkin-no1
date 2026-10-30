@@ -162,6 +162,12 @@ canvas{display:block;width:100%}
 const T=1/3, S=2/3;
 const ch=(s,d)=>s.split(' ').map(n=>[d,n]);
 const rep=(a,k)=>{let r=[];for(let i=0;i<k;i++)r=r.concat(a);return r;};
+// D〜E はくりかえし（2かいめは 1ばんカッコ をとばす）
+const SD=[[12],[1],[S,'G4'],[T,'G3'],[1,'G3'],[1],
+   [4],[3],[S,'G4'],[T,'G4'],
+   [S,'C5'],[T,'Bb4'],[S,'Ab4'],[T,'G4'],[S,'F4'],[T,'Eb4'],[S,'D4'],[T,'C4'],
+   [1,'G4'],...ch('G4 G4 G4',T),[1,'G4'],[1]];
+const SE=[[12],[1],...ch('G4 D4 G4',T),[1,'G3'],[1]];
 const SEQ=[
  'A',[12],[3.5],[.5,'G4'],[5,'F#4'],[3],
  [8],[3.5],[.5,'F#4'],[5,'G4'],[3],
@@ -171,12 +177,9 @@ const SEQ=[
  'B',[8],...ch('A3 B3 C4 D4 Eb4 F4 F#4 G#4 A4 B4 C5 D5 Eb5 F5 G5',1),[1],
  'C',[12],[1],...ch('G4 D4 G4',T),[1,'G3'],[1],...rep(ch('C5 B4 C5',T),12),
    ...ch('Bb4 A4 Bb4 B4 A#4 B4',T),[1,'B4'],[1],
- 'D',[12],[1],[S,'G4'],[T,'G3'],[1,'G3'],[1],
-   [4],[3],[S,'G4'],[T,'G4'],
-   [S,'C5'],[T,'Bb4'],[S,'Ab4'],[T,'G4'],[S,'F4'],[T,'Eb4'],[S,'D4'],[T,'C4'],
-   [1,'G4'],...ch('G4 G4 G4',T),[1,'G4'],[1],
- 'E',[12],[1],...ch('G4 D4 G4',T),[1,'G3'],[1],
-   [12],[1],...ch('G4 D4 G4',T),[1,'G3'],[1]
+ 'D',...SD,
+ 'E',...SE,...SE,
+ 'R',...SD,...SE
 ];
 const LET={C:'ど',D:'れ',E:'み',F:'ふぁ',G:'そ',A:'ら',B:'し'};
 const COL={C:'#E5483D',D:'#F08A24',E:'#E0B00C',F:'#3FAE5A',G:'#2CA6D8',A:'#3567D6',B:'#8C55C8'};
@@ -195,7 +198,8 @@ for(const it of SEQ){
 }
 const TOTAL=Math.round(beat*12)/12;
 SECS[cur].end=TOTAL; SECS.all={start:0,end:TOTAL};
-const SEC_ORDER=['all','A','B','C','D','E'];
+const SEC_ORDER=['all','A','B','C','D','E','R'];
+const SNAME={all:'ぜんぶ',R:'くりかえし'};
 
 // ===== 鉄琴のならび =====
 const NAT=[55,57,59,60,62,64,65,67,69,71,72,74,76,77,79];
@@ -309,7 +313,7 @@ function draw(nb){
     const y=hitY-(b-nb)*ppb; if(y<-2||y>H)continue;
     const secAt=Object.keys(SECS).find(k=>k!=='all'&&Math.abs(SECS[k].start-b)<1e-6);
     cx.strokeStyle=th.line;cx.lineWidth=secAt?2.5:1;cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke();
-    if(secAt){cx.fillStyle=th.sub;cx.font='900 14px "Zen Maru Gothic",sans-serif';cx.fillText(secAt,6,y-5);}
+    if(secAt){cx.fillStyle=th.sub;cx.font='900 14px "Zen Maru Gothic",sans-serif';cx.fillText(secAt==='R'?'D（2かいめ）':secAt,6,y-5);}
   }
   // 音
   const inSec=n=>n.beat>=st.sb-1e-6&&n.beat<st.eb-1e-6;
@@ -448,7 +452,7 @@ function buildChips(){
     const b=document.createElement('button');b.className='chip';
     let best=0;try{best=+(localStorage.getItem('tekkin1-best-'+k)||0);}catch(e){}
     const stars=best>=90?3:best>=70?2:best>=40?1:0;
-    b.innerHTML=(k==='all'?'ぜんぶ':k)+(stars?`<small>${'★'.repeat(stars)}</small>`:'');
+    b.innerHTML=(SNAME[k]||k)+(stars?`<small>${'★'.repeat(stars)}</small>`:'');
     b.setAttribute('aria-pressed',String(st.sec===k));
     b.onclick=()=>{if(st.playing)stop();st.sec=k;buildChips();};
     chips.appendChild(b);
